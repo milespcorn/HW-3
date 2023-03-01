@@ -34,30 +34,27 @@ void MPI_P2P_reduction(long long int * array_of_ints, long long int * recv_buffe
 		//This loop is the one that iterates down the groups of pairs (i.e. 16->8->4->2->1 pairs of ranks)
 		for (int iteration = 0; iteration < log(numtasks)/log(2); iteration++)
 		{
-			int stride = pow(2,iteration+1);//This is the stride accross the ranks.
-			//Loops accross my ranks at every iteration
-			for (int i = 0; i < numtasks; i+=stride)
+			int sender   = pow(2,iteration);//This guy will identify my senders this iteration.
+			int receiver = pow(2,iteration+1);//This guy will identify my receivers this iteration.
+			
+			if(taskid % sender == 0 )//This guy says "if you are the 'odd' rank" or "sender rank"
 			{
-				if(taskid == i + stride/2)//This guy says "if you are the 'odd' rank" or "sender rank"
-				{
-					//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm)
-					//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
+				//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm)
+				//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
+				MPI_Isend(&local_sum, 1, datatype, taskid - sender , mtype, MPI_COMM_WORLD, &request);
 
-					MPI_Isend(&local_sum, 1, datatype, i, mtype, MPI_COMM_WORLD, &request);
+			}
+			if(taskid % receiver == 0)//This guy says "if you are the 'even' rank" or "reciever rank"
+			{
 
-				}
-				if(taskid == i)//This guy says "if you are the 'even' rank" or "reciever ranl"
-				{
-
-					long long int holder = local_sum;//hold my sum so I don't override it by accident
-					//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request * request)
-					//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
-					MPI_Irecv(&local_sum, 1, datatype, i+stride/2, mtype, MPI_COMM_WORLD, &request);
-					MPI_Wait(&request, &status);
-					local_sum += holder;//combine together the two ranks
-				}
-				
-		 	}
+				long long int holder = local_sum;//hold my sum so I don't override it by accident
+				//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request * request)
+				//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
+				MPI_Irecv(&local_sum, 1, datatype, taskid + sender, mtype, MPI_COMM_WORLD, &request);
+				MPI_Wait(&request, &status);
+				local_sum += holder;//combine together the two ranks
+			}
+		 	
 		 }
 
 		if (taskid == root)
