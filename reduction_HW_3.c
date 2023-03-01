@@ -21,7 +21,7 @@ void MPI_P2P_reduction(long long int * array_of_ints, long long int * recv_buffe
 		MPI_Status status;
     		MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
     		MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
-
+		MPI_Request request = MPI_REQUEST_NULL;
     		
     		local_sum = 0;
     		
@@ -40,19 +40,23 @@ void MPI_P2P_reduction(long long int * array_of_ints, long long int * recv_buffe
 			{
 				if(taskid == i + stride/2)//This guy says "if you are the 'odd' rank" or "sender rank"
 				{
+					//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm)
+					//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
 
-					MPI_Send(&local_sum, 1, datatype, i, mtype, MPI_COMM_WORLD);
+					MPI_Isend(&local_sum, 1, datatype, i, mtype, MPI_COMM_WORLD, &request);
 
 				}
 				if(taskid == i)//This guy says "if you are the 'even' rank" or "reciever ranl"
 				{
 
 					long long int holder = local_sum;//hold my sum so I don't override it by accident
-
-					MPI_Recv(&local_sum, 1, datatype, i+stride/2, mtype, MPI_COMM_WORLD, &status);
-
+					//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request * request)
+					//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
+					MPI_Irecv(&local_sum, 1, datatype, i+stride/2, mtype, MPI_COMM_WORLD, &request);
+					MPI_Wait(&request, &status);
 					local_sum += holder;//combine together the two ranks
 				}
+				
 		 	}
 		 }
 
