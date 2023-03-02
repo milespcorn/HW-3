@@ -37,22 +37,20 @@ void MPI_P2P_reduction(long long int * array_of_ints, long long int * recv_buffe
 			int sender   = pow(2,iteration);//This guy will identify my senders this iteration.
 			int receiver = pow(2,iteration+1);//This guy will identify my receivers this iteration.
 			
-			if(taskid % sender == 0 )//This guy says "if you are the 'odd' rank" or "sender rank"
-			{
-				//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm)
-				//(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
-				MPI_Isend(&local_sum, 1, datatype, taskid - sender , mtype, MPI_COMM_WORLD, &request);
-
-			}
+			
 			if(taskid % receiver == 0)//This guy says "if you are the 'even' rank" or "reciever rank"
 			{
 
 				long long int holder = local_sum;//hold my sum so I don't override it by accident
-				//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request * request)
-				//(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status)
 				MPI_Irecv(&local_sum, 1, datatype, taskid + sender, mtype, MPI_COMM_WORLD, &request);
 				MPI_Wait(&request, &status);
 				local_sum += holder;//combine together the two ranks
+			}
+			else if(taskid % sender == 0 )//This guy says "if you are the 'odd' rank" or "sender rank"
+			{
+
+				MPI_Isend(&local_sum, 1, datatype, taskid - sender , mtype, MPI_COMM_WORLD, &request);
+
 			}
 		 	
 		 }
